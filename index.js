@@ -10,31 +10,59 @@
 // To get you started we've included code to prevent your Battlesnake from moving backwards.
 // For more info see docs.battlesnake.com
 import express from 'express';
-import move from './moveLogic.js'
+import move from './moveLogic.js';
 
 const app = express();
 app.use(express.json());
 const config = {
   apiversion: "1",
-  author: "",       // TODO: Your Battlesnake Username
-  color: "#cb82ff", // TODO: Choose color
-  head: "default",  // TODO: Choose head, see https://play.battlesnake.com/customizations/ for options unlocked in your account
-  tail: "default",  // TODO: Choose tail, see https://play.battlesnake.com/customizations/ for options unlocked in your account
+  author: "",
+  color: "#862882",
+  head: "snow-worm",
+  tail: "default"
 }
 
-//TODO: respond to GET requests on "/" with the config object above
+app.get("/", (req, res) => {
+  res.json(config)
+});
 
-//TODO: respond to POST requests on "/start". Your response itself is ignored, but must have status code "200"
-//      the request body will contain objects representing the game instance, game board state, and your snake
-//      https://docs.battlesnake.com/api/requests/start
 
+app.post("/start", (req, res) => {
+  const gameData = req.body; 
+  console.log("Game started:", gameData.game.id);
+
+  res.status(200).send("Game start received");
+});
+
+
+app.post("/move", (req, res) => {
+  const gameState = req.body; 
+  
+  const { move: snakeMove, shout } = move(gameState); 
+  res.json({
+      move: snakeMove,
+      shout: shout || ''  
+  });
+});
+
+
+app.post("/end", (req, res) => {
+  console.log("Game Over! Thanks for playing.");
+  
+  res.sendStatus(200); // 200 OK
+});
 //TODO: respond to POST requests on "/move". Your response should be an object with a "move" property and optionally
 //      a "shout" property. The request body again contains objects representing the game state
 //      https://docs.battlesnake.com/api/requests/move
 
+
 //TODO: respond to POST requests on "/end", which signals the end of a game. Your response itself is ignored, 
 //      but must have status code "200" the request body will contain objects representing the game
 //      https://docs.battlesnake.com/api/requests/end
+
+
+
+
 
 const host = '0.0.0.0';
 const port = process.env.PORT || 8000;
