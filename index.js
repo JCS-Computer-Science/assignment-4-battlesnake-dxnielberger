@@ -19,7 +19,7 @@ const config = {
   author: "",
   color: "#862882",
   head: "snow-worm",
-  tail: "default"
+  tail: "mystic-moon"
 }
 
 app.get("/", (req, res) => {
@@ -49,7 +49,7 @@ app.post("/move", (req, res) => {
 app.post("/end", (req, res) => {
   console.log("Game Over! Thanks for playing.");
   
-  res.sendStatus(200); // 200 OK
+  res.sendStatus(200); 
 });
 //TODO: respond to POST requests on "/move". Your response should be an object with a "move" property and optionally
 //      a "shout" property. The request body again contains objects representing the game state
