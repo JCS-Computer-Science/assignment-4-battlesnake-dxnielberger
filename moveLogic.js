@@ -40,7 +40,74 @@ export default function move(gameState) {
         }
     }
 
-    const safeMoves = Object.keys(moveSafety).filter(dir => moveSafety[dir]);
+    const otherSnakes = gameState.board.snakes;
+
+for (let i = 0; i < otherSnakes.length; i++) {
+    const snake = otherSnakes[i];
+
+    if (snake.id !== gameState.you.id) {
+        for (let j = 0; j < snake.body.length; j++) {
+            const part = snake.body[j];
+
+            for (let dir in possibleMoves) {
+                const next = possibleMoves[dir];
+
+                if (next.x == part.x && next.y == part.y) {
+                    moveSafety[dir] = false;
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+
+    
+const food = gameState.board.food;
+
+if (food.length > 0) {
+    const myHead = gameState.you.body[0];
+    let closestFood = food[0];
+    let minDistance = Math.abs(myHead.x - food[0].x) + Math.abs(myHead.y - food[0].y);
+
+    for (let i = 1; i < food.length; i++) {
+        const f = food[i];
+        const dist = Math.abs(myHead.x - f.x) + Math.abs(myHead.y - f.y);
+        if (dist < minDistance) {
+            minDistance = dist;
+            closestFood = f;
+        }
+    }
+    let bestMove = null; //used google to help
+    let bestDistance = Infinity; //used google to help
+
+    for (let dir of Object.keys(moveSafety)) {
+        if (moveSafety[dir]) {
+            const next = possibleMoves[dir];
+            const dist = Math.abs(next.x - closestFood.x) + Math.abs(next.y - closestFood.y); //the use of abs and dir, I got off google.
+            if (dist < bestDistance) {
+                bestDistance = dist;
+                bestMove = dir;
+            }
+        }
+    }
+
+    if (bestMove != null) {
+        return { move: bestMove };
+    }
+}
+
+
+
+
+
+
+
+
+const safeMoves = Object.keys(moveSafety).filter(dir => moveSafety[dir]);
     const nextMove = safeMoves.length > 0 ? safeMoves[Math.floor(Math.random() * safeMoves.length)] : "down";
 
     return { move: nextMove };
