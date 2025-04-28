@@ -8,26 +8,27 @@ export default function move(gameState) {
 
     const myHead = gameState.you.body[0];
     const myNeck = gameState.you.body[1];
-    const boardWidth = gameState.board.width;
-    const boardHeight = gameState.board.height;
-    const body = gameState.you.body;
-
-    const possibleMoves = {
-        up: { x: myHead.x, y: myHead.y + 1 },
-        down: { x: myHead.x, y: myHead.y - 1 },
-        left: { x: myHead.x - 1, y: myHead.y },
-        right: { x: myHead.x + 1, y: myHead.y }
-    };
 
     if (myNeck.x < myHead.x) moveSafety.left = false;
     else if (myNeck.x > myHead.x) moveSafety.right = false;
     else if (myNeck.y < myHead.y) moveSafety.down = false;
     else if (myNeck.y > myHead.y) moveSafety.up = false;
 
+    const boardWidth = gameState.board.width;
+    const boardHeight = gameState.board.height;
+
     if (myHead.x == 0) moveSafety.left = false;
     if (myHead.x == boardWidth - 1) moveSafety.right = false;
     if (myHead.y == 0) moveSafety.down = false;
     if (myHead.y == boardHeight - 1) moveSafety.up = false;
+
+    const body = gameState.you.body;
+    const possibleMoves = {
+        up: { x: myHead.x, y: myHead.y + 1 },
+        down: { x: myHead.x, y: myHead.y - 1 },
+        left: { x: myHead.x - 1, y: myHead.y },
+        right: { x: myHead.x + 1, y: myHead.y }
+    };
 
     for (let direction in possibleMoves) {
         const nextPos = possibleMoves[direction];
@@ -38,13 +39,14 @@ export default function move(gameState) {
         }
     }
 
-
     const otherSnakes = gameState.board.snakes;
     const myLength = gameState.you.length;
 
-    for (let snake of otherSnakes) {
+    for (let i = 0; i < otherSnakes.length; i++) {
+        const snake = otherSnakes[i];
         if (snake.id !== gameState.you.id) {
-            for (let part of snake.body) {
+            for (let j = 0; j < snake.body.length; j++) {
+                const part = snake.body[j];
                 for (let dir in possibleMoves) {
                     const next = possibleMoves[dir];
                     if (next.x == part.x && next.y == part.y) {
@@ -52,7 +54,7 @@ export default function move(gameState) {
                     }
                 }
             }
-            
+
             const head = snake.body[0];
             if (snake.length >= myLength) {
                 for (let dir in possibleMoves) {
@@ -66,26 +68,86 @@ export default function move(gameState) {
         }
     }
 
-    for (let dir in moveSafety) {
-        if (moveSafety[dir]) {
-            const next = possibleMoves[dir];
-            const area = floodFill(next, gameState, 500);
-            if (area < myLength) {
-                moveSafety[dir] = false;
+    // ------------------------------
+    // SMART TRAPPING CODE STARTS HERE
+    // ------------------------------
+
+    // Try to trap smaller snakes by predicting their next move
+    let trapTarget = null;
+    let trapMoves = [];
+
+    for (let enemy of otherSnakes) {
+        if (enemy.id !== gameState.you.id && enemy.length < myLength) {
+            const head = enemy.body[0];
+            const nearWall = (head.x <= 1 || head.x >= boardWidth - 2 || head.y <= 1 || head.y >= boardHeight - 2);
+
+            if (nearWall) {
+                // Predict enemy's next possible moves
+                const enemyMoves = [
+                    { x: head.x + 1, y: head.y },
+                    { x: head.x - 1, y: head.y },
+                    { x: head.x, y: head.y + 1 },
+                    { x: head.x, y: head.y - 1 }
+                ].filter(move => 
+                    move.x >= 0 && move.x < boardWidth &&
+                    move.y >= 0 && move.y < boardHeight &&
+                    !gameState.board.snakes.some(snake => 
+                        snake.body.some(part => part.x === move.x && part.y === move.y)
+                    )
+                );
+
+                if (enemyMoves.length <= 2) { // Only a few escape options? Good target!
+                    trapTarget = head;
+                    trapMoves = enemyMoves;
+                    break;
+                }
             }
         }
     }
 
-    const food = gameState.board.food;
-    const myHealth = gameState.you.health;
+    if (trapTarget != null) {
+        let bestMove = null;
+        let bestScore = -Infinity;
+        for (let dir of Object.keys(moveSafety)) {
+            if (!moveSafety[dir]) continue;
 
-    let shouldSeekFood = myHealth < 50 || gameState.board.snakes.some(snake => snake.id !== gameState.you.id && snake.length > myLength);
+            const next = possibleMoves[dir];
+
+            // Score by how close we get to enemy and their escape squares
+            let minEnemyDist = Math.abs(next.x - trapTarget.x) + Math.abs(next.y - trapTarget.y);
+            for (const escape of trapMoves) {
+                const escapeDist = Math.abs(next.x - escape.x) + Math.abs(next.y - escape.y);
+                if (escapeDist < minEnemyDist) {
+                    minEnemyDist = escapeDist;
+                }
+            }
+
+            const area = floodFill(next, gameState, 100);
+            const score = (-minEnemyDist * 2) + (area * 0.1); // prioritize cutoff, but still want space
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = dir;
+            }
+        }
+
+        if (bestMove != null) {
+            return { move: bestMove };
+        }
+    }
+
+    // ------------------------------
+    // SMART TRAPPING CODE ENDS HERE
+    // ------------------------------
 
     let targetHead = null;
     let closestDist = Infinity;
 
-    for (let enemy of otherSnakes) {
-        if (enemy.id !== gameState.you.id && enemy.length < myLength) {
+    for (let i = 0; i < otherSnakes.length; i++) {
+        const enemy = otherSnakes[i];
+        if (enemy.id == gameState.you.id) continue;
+
+        if (enemy.length < myLength) {
             const head = enemy.body[0];
             const dist = Math.abs(myHead.x - head.x) + Math.abs(myHead.y - head.y);
             if (dist < closestDist) {
@@ -96,28 +158,41 @@ export default function move(gameState) {
     }
 
     if (targetHead != null) {
-        let bestMove = null;
-        let bestScore = -Infinity;
+        let bestAttack = null;
+        let bestDist = Infinity;
         for (let dir of Object.keys(moveSafety)) {
-            if (!moveSafety[dir]) continue;
-            const next = possibleMoves[dir];
-            const dist = Math.abs(next.x - targetHead.x) + Math.abs(next.y - targetHead.y);
-            const area = floodFill(next, gameState, 500);
-            const score = (-dist) + (area * 0.1);
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = dir;
+            if (moveSafety[dir]) {
+                const next = possibleMoves[dir];
+                const dist = Math.abs(next.x - targetHead.x) + Math.abs(next.y - targetHead.y);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    bestAttack = dir;
+                }
             }
         }
-        if (bestMove != null) {
-            return { move: bestMove };
+
+        if (bestAttack != null) {
+            return { move: bestAttack };
         }
+    }
+
+    const food = gameState.board.food;
+    const myHealth = gameState.you.health;
+
+    let shouldSeekFood = myHealth < 50;
+
+    let longerEnemyExists = gameState.board.snakes.some(snake =>
+        snake.id != gameState.you.id && snake.length > myLength
+    );
+    if (longerEnemyExists) {
+        shouldSeekFood = true;
     }
 
     if (shouldSeekFood && food.length > 0) {
         let closestFood = food[0];
         let minDistance = Math.abs(myHead.x - food[0].x) + Math.abs(myHead.y - food[0].y);
-        for (let f of food) {
+        for (let i = 1; i < food.length; i++) {
+            const f = food[i];
             const dist = Math.abs(myHead.x - f.x) + Math.abs(myHead.y - f.y);
             if (dist < minDistance) {
                 minDistance = dist;
@@ -126,18 +201,18 @@ export default function move(gameState) {
         }
 
         let bestMove = null;
-        let bestScore = -Infinity;
+        let bestDistance = Infinity;
         for (let dir of Object.keys(moveSafety)) {
-            if (!moveSafety[dir]) continue;
-            const next = possibleMoves[dir];
-            const dist = Math.abs(next.x - closestFood.x) + Math.abs(next.y - closestFood.y);
-            const area = floodFill(next, gameState, 500);
-            const score = (-dist) + (area * 0.1);
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = dir;
+            if (moveSafety[dir]) {
+                const next = possibleMoves[dir];
+                const dist = Math.abs(next.x - closestFood.x) + Math.abs(next.y - closestFood.y);
+                if (dist < bestDistance) {
+                    bestDistance = dist;
+                    bestMove = dir;
+                }
             }
         }
+
         if (bestMove != null) {
             return { move: bestMove };
         }
@@ -147,37 +222,24 @@ export default function move(gameState) {
     let bestArea = -1;
     for (let dir of Object.keys(moveSafety)) {
         if (!moveSafety[dir]) continue;
+
         const next = possibleMoves[dir];
-        const area = floodFill(next, gameState, 500);
-        if (area > bestArea) {
+        const area = floodFill(next, gameState, 100);
+
+        if (area >= myLength && area > bestArea) {
             bestArea = area;
             bestMove = dir;
         }
     }
+
     if (bestMove != null) {
         return { move: bestMove };
     }
 
     const safeMoves = Object.keys(moveSafety).filter(dir => moveSafety[dir]);
-    if (safeMoves.length > 0) {
-        const centerX = Math.floor(boardWidth / 2);
-        const centerY = Math.floor(boardHeight / 2);
-        let fallbackMove = null;
-        let fallbackDist = Infinity;
+    const nextMove = safeMoves.length > 0 ? safeMoves[Math.floor(Math.random() * safeMoves.length)] : "down";
 
-        for (let dir of safeMoves) {
-            const next = possibleMoves[dir];
-            const dist = Math.abs(next.x - centerX) + Math.abs(next.y - centerY);
-            if (dist < fallbackDist) {
-                fallbackDist = dist;
-                fallbackMove = dir;
-            }
-        }
-
-        return { move: fallbackMove };
-    }
-
-    return { move: "down" };
+    return { move: nextMove };
 }
 
 function floodFill(start, gameState, maxDepth = 100) {
