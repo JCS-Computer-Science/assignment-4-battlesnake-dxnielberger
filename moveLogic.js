@@ -68,21 +68,17 @@ export default function move(gameState) {
         }
     }
 
-    // ------------------------------
-    // SMART TRAPPING CODE STARTS HERE
-    // ------------------------------
 
-    // Try to trap smaller snakes by predicting their next move
     let trapTarget = null;
     let trapMoves = [];
 
     for (let enemy of otherSnakes) {
-        if (enemy.id !== gameState.you.id && enemy.length < myLength) {
+        if (enemy.id != gameState.you.id && enemy.length < myLength) {
             const head = enemy.body[0];
             const nearWall = (head.x <= 1 || head.x >= boardWidth - 2 || head.y <= 1 || head.y >= boardHeight - 2);
 
             if (nearWall) {
-                // Predict enemy's next possible moves
+        
                 const enemyMoves = [
                     { x: head.x + 1, y: head.y },
                     { x: head.x - 1, y: head.y },
@@ -96,7 +92,7 @@ export default function move(gameState) {
                     )
                 );
 
-                if (enemyMoves.length <= 2) { // Only a few escape options? Good target!
+                if (enemyMoves.length <= 2) { 
                     trapTarget = head;
                     trapMoves = enemyMoves;
                     break;
@@ -113,7 +109,6 @@ export default function move(gameState) {
 
             const next = possibleMoves[dir];
 
-            // Score by how close we get to enemy and their escape squares
             let minEnemyDist = Math.abs(next.x - trapTarget.x) + Math.abs(next.y - trapTarget.y);
             for (const escape of trapMoves) {
                 const escapeDist = Math.abs(next.x - escape.x) + Math.abs(next.y - escape.y);
@@ -123,7 +118,7 @@ export default function move(gameState) {
             }
 
             const area = floodFill(next, gameState, 100);
-            const score = (-minEnemyDist * 2) + (area * 0.1); // prioritize cutoff, but still want space
+            const score = (-minEnemyDist * 2) + (area * 0.1); 
 
             if (score > bestScore) {
                 bestScore = score;
@@ -135,10 +130,6 @@ export default function move(gameState) {
             return { move: bestMove };
         }
     }
-
-    // ------------------------------
-    // SMART TRAPPING CODE ENDS HERE
-    // ------------------------------
 
     let targetHead = null;
     let closestDist = Infinity;
@@ -218,23 +209,31 @@ export default function move(gameState) {
         }
     }
 
+
+
+
+
+
+
     let bestMove = null;
     let bestArea = -1;
-    for (let dir of Object.keys(moveSafety)) {
-        if (!moveSafety[dir]) continue;
+    const minSafeArea = Math.max(myLength * 1.5, 20); 
 
-        const next = possibleMoves[dir];
-        const area = floodFill(next, gameState, 100);
+for (let dir of Object.keys(moveSafety)) {
+    if (!moveSafety[dir]) continue;
 
-        if (area >= myLength && area > bestArea) {
-            bestArea = area;
-            bestMove = dir;
-        }
+    const next = possibleMoves[dir];
+    const area = floodFill(next, gameState, 100);
+
+    if (area > bestArea && area >= minSafeArea) {
+        bestArea = area;
+        bestMove = dir;
     }
+}
 
-    if (bestMove != null) {
-        return { move: bestMove };
-    }
+if (bestMove != null) {
+    return { move: bestMove };
+}
 
     const safeMoves = Object.keys(moveSafety).filter(dir => moveSafety[dir]);
     const nextMove = safeMoves.length > 0 ? safeMoves[Math.floor(Math.random() * safeMoves.length)] : "down";
