@@ -68,17 +68,15 @@ export default function move(gameState) {
         }
     }
 
-
     let trapTarget = null;
     let trapMoves = [];
 
     for (let enemy of otherSnakes) {
-        if (enemy.id != gameState.you.id && enemy.length < myLength) {
+        if (enemy.id !== gameState.you.id && enemy.length < myLength) {
             const head = enemy.body[0];
             const nearWall = (head.x <= 1 || head.x >= boardWidth - 2 || head.y <= 1 || head.y >= boardHeight - 2);
 
             if (nearWall) {
-        
                 const enemyMoves = [
                     { x: head.x + 1, y: head.y },
                     { x: head.x - 1, y: head.y },
@@ -209,31 +207,23 @@ export default function move(gameState) {
         }
     }
 
-
-
-
-
-
-
     let bestMove = null;
     let bestArea = -1;
-    const minSafeArea = Math.max(myLength * 1.5, 20); 
+    for (let dir of Object.keys(moveSafety)) {
+        if (!moveSafety[dir]) continue;
 
-for (let dir of Object.keys(moveSafety)) {
-    if (!moveSafety[dir]) continue;
+        const next = possibleMoves[dir];
+        const area = floodFill(next, gameState, 100);
 
-    const next = possibleMoves[dir];
-    const area = floodFill(next, gameState, 100);
-
-    if (area > bestArea && area >= minSafeArea) {
-        bestArea = area;
-        bestMove = dir;
+        if (area >= myLength && area > bestArea) {
+            bestArea = area;
+            bestMove = dir;
+        }
     }
-}
 
-if (bestMove != null) {
-    return { move: bestMove };
-}
+    if (bestMove != null) {
+        return { move: bestMove };
+    }
 
     const safeMoves = Object.keys(moveSafety).filter(dir => moveSafety[dir]);
     const nextMove = safeMoves.length > 0 ? safeMoves[Math.floor(Math.random() * safeMoves.length)] : "down";
