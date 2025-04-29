@@ -44,7 +44,7 @@ export default function move(gameState) {
 
     for (let i = 0; i < otherSnakes.length; i++) {
         const snake = otherSnakes[i];
-        if (snake.id !== gameState.you.id) {
+        if (snake.id != gameState.you.id) {
             for (let j = 0; j < snake.body.length; j++) {
                 const part = snake.body[j];
                 for (let dir in possibleMoves) {
@@ -77,6 +77,7 @@ export default function move(gameState) {
             const nearWall = (head.x <= 1 || head.x >= boardWidth - 2 || head.y <= 1 || head.y >= boardHeight - 2);
 
             if (nearWall) {
+               
                 const enemyMoves = [
                     { x: head.x + 1, y: head.y },
                     { x: head.x - 1, y: head.y },
@@ -128,6 +129,7 @@ export default function move(gameState) {
             return { move: bestMove };
         }
     }
+
 
     let targetHead = null;
     let closestDist = Infinity;
@@ -260,4 +262,3 @@ function floodFill(start, gameState, maxDepth = 100) {
 
     return size;
 }
-
