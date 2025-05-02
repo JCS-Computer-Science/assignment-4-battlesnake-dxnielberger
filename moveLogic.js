@@ -68,11 +68,46 @@ export default function move(gameState) {
         }
     }
 
+
+
+    const health = gameState.you.health;
+
+    
+    
+    
+    
+    for (let dir in possibleMoves) {
+        const next = possibleMoves[dir];
+        if (moveSafety[dir] && isHazardTile(next.x, next.y, gameState)) {
+            const inDesperation = health > 50 && floodFill(next, gameState, 30) > 10;
+            if (!inDesperation) {
+                moveSafety[dir] = false;
+            }
+        }
+    }
+
+    const currentlyInHazard = isHazardTile(myHead.x, myHead.y, gameState);
+    if (currentlyInHazard) {
+        for (let dir in possibleMoves) {
+            const next = possibleMoves[dir];
+            if (moveSafety[dir] && !isHazardTile(next.x, next.y, gameState)) {
+                return { move: dir };
+            }
+        }
+    }
+
+
+
+
+
+
+
+
     let trapTarget = null;
     let trapMoves = [];
 
     for (let enemy of otherSnakes) {
-        if (enemy.id !== gameState.you.id && enemy.length < myLength) {
+        if (enemy.id != gameState.you.id && enemy.length < myLength) {
             const head = enemy.body[0];
             const nearWall = (head.x <= 1 || head.x >= boardWidth - 2 || head.y <= 1 || head.y >= boardHeight - 2);
 
@@ -87,7 +122,7 @@ export default function move(gameState) {
                     move.x >= 0 && move.x < boardWidth &&
                     move.y >= 0 && move.y < boardHeight &&
                     !gameState.board.snakes.some(snake => 
-                        snake.body.some(part => part.x === move.x && part.y === move.y)
+                        snake.body.some(part => part.x == move.x && part.y == move.y)
                     )
                 );
 
@@ -170,7 +205,7 @@ export default function move(gameState) {
     const food = gameState.board.food;
     const myHealth = gameState.you.health;
 
-    let shouldSeekFood = myHealth < 50;
+    let shouldSeekFood = myHealth < 70;
 
     let longerEnemyExists = gameState.board.snakes.some(snake =>
         snake.id != gameState.you.id && snake.length > myLength
@@ -232,6 +267,17 @@ export default function move(gameState) {
 
     return { move: nextMove };
 }
+
+
+
+
+function isHazardTile(x, y, gameState) {
+    return gameState.board.hazards.some(h => h.x == x && h.y == y);
+}
+
+
+
+
 
 function floodFill(start, gameState, maxDepth = 100) {
     const queue = [start];
